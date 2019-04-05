@@ -143,6 +143,11 @@ done
 
 #Step 4: Run RiboCode to identify translated ORFs and save results for each SRR file
 
+#switch to python 2
+module unload python/3.6.1
+module load intel/18.0.2
+module load python/2.7.13
+
 echo "Running RiboCode"
 file_list=($file_dir/*toTranscriptome.out.bam)
 
@@ -153,8 +158,8 @@ for f in "${file_list[@]}"; do
         echo $this_fname
 	
 	#step 4a run metaplots
-	echo "metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname""
-	metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname" -f1_percent 0.65
+	echo "metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname" -f0_percent 0.65"
+	metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname" -f0_percent 0.65
 
 	#output of metaplots is config file used in next step. Output name is "$this_fname"_pre_config.txt
 
@@ -181,3 +186,4 @@ done
 
 
 #Step 5: Count the number of RPF reads aligned to ORFs and save in file
+
