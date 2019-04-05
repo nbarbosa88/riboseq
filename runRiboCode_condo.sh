@@ -14,6 +14,7 @@ module load star/2.5.3a-rdzqclb
 module load python/3.6.3-u4oaxsb
 module load py-pip/9.0.1-py3-dpds55c
 
+
 #copy needed files to scratch for faster access
 rRNAIndex=/work/LAS/mash-lab/usingh/riboSeq/sampleData/humanData/bowtieIndex/rRNAindex
 STARindex=/work/LAS/mash-lab/usingh/riboSeq/sampleData/humanData/human_STARindex
