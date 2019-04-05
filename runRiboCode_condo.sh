@@ -9,17 +9,16 @@
 # Files: Humangenome.fa corresponding HumanAnnotation.gtf SRR files, rRNA seq database
 # Indexes: STAR index, bowtie2 rRNA index
 
-module load bowtie2/2.3.1-py3-ge4lv4s
-module load star/2.5.3a-rdzqclb
-module load python/3.6.3-u4oaxsb
-module load py-pip/9.0.1-py3-dpds55c
-
+module load sra-toolkit/2.8.2
+module load cutadapt/intel/1.16
+module load bowtie2/intel/2.3.2
+module load star/2.6.1a
 
 #copy needed files to scratch for faster access
-rRNAIndex=/work/LAS/mash-lab/usingh/riboSeq/sampleData/humanData/bowtieIndex/rRNAindex
-STARindex=/work/LAS/mash-lab/usingh/riboSeq/sampleData/humanData/human_STARindex
-RiboCodeAnnot=/work/LAS/mash-lab/usingh/riboSeq/sampleData/humanData/RiboCode_annot
-proc=16
+rRNAIndex=/N/dc2/scratch/ursingh/urmi/condo/sampleData/humanData/bowtieIndex/rRNAindex
+STARindex=/N/dc2/scratch/ursingh/urmi/condo/sampleData/humanData/human_STARindex
+RiboCodeAnnot=/N/dc2/scratch/ursingh/urmi/condo/sampleData/humanData/RiboCode_annot
+proc=8
 
 
 #Step 1: Convert .SRA files to FASTQ. Use fastq-dump to control quality
@@ -49,7 +48,41 @@ done
 echo "finally waiting for fastq-dump to finish..."
 wait
 
-########Check if files are RPF not RNA seq############
+
+#Step 1b: analyse lengths of the reads. Remove fastq with reads more than 40 bp
+#quickly estimate the distribution by looking at first 10,000,000 reads
+
+file_list=($file_dir/*pass_1.fastq)
+#max read length
+maxLen=40
+
+for f in "${file_list[@]}"; do
+	
+	this_fname=$(echo "$f" | rev | cut -d"/" -f1 | rev | cut -d"." -f1)
+        echo $this_fname 
+	echo "head -10000000 $f | awk '{if(NR%4==2) print length($1)}' | sort | uniq -c"
+	lenDist=$(head -10000000 $f | awk '{if(NR%4==2) print length($1)}' | sort | uniq -c)
+	mode=${lens[0]} | awk '{print $2}'
+
+	#if mode is > 40 reject the run
+	if [ "$mode" -gt "$maxLen"]; then
+		rm -rf $f
+		echo "FAILED READ LENGTH TEST FOR " "$this_fname"
+                echo "$this_fname" >> "$file_dir"/failed_lengths.log
+
+	else 
+		echo "Run tringalore"
+	fi
+
+
+	#else proceed to trimGalore
+
+	#Step 1c: use trimGalore to trim adaptors
+
+done
+
+exit 1
+
 
 #Step 2: Remove rRNA reads from FASTQ using bowtie or Sortmerna
 echo "Filtering rRNA using bowtie2"
@@ -116,8 +149,8 @@ echo "Running RiboCode"
 file_list=($file_dir/*toTranscriptome.out.bam)
 
 for f in "${file_list[@]}"; do
-	echo $f
         #this_fname=$(echo "$f" | rev | cut -d"/" -f1 | rev | cut -d"." -f1)
+	echo $f
 	this_fname=$(echo "$f" | tr "_" "\t" | awk '{print $1}')
         echo $this_fname
 	
@@ -149,3 +182,4 @@ done
 
 
 
+#Step 5: Count the number of RPF reads aligned to ORFs and save in file
