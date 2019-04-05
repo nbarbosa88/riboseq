@@ -54,31 +54,26 @@ wait
 
 file_list=($file_dir/*pass_1.fastq)
 #max read length
-maxLen=40
-
+maxLen=50
 for f in "${file_list[@]}"; do
-	
 	this_fname=$(echo "$f" | rev | cut -d"/" -f1 | rev | cut -d"." -f1)
         echo $this_fname 
 	echo "head -10000000 $f | awk '{if(NR%4==2) print length($1)}' | sort | uniq -c"
 	lenDist=$(head -10000000 $f | awk '{if(NR%4==2) print length($1)}' | sort | uniq -c)
-	mode=${lens[0]} | awk '{print $2}'
-
+	#echo "Dist: $lenDist"
+	mode=$(echo ${lenDist[0]} | awk '{print $2}')
+	#echo "MODE: $mode"
 	#if mode is > 40 reject the run
-	if [ "$mode" -gt "$maxLen"]; then
+	if [ "$mode" -gt "$maxLen" ]; then
 		rm -rf $f
 		echo "FAILED READ LENGTH TEST FOR " "$this_fname"
                 echo "$this_fname" >> "$file_dir"/failed_lengths.log
-
 	else 
-		echo "Run tringalore"
+		#else proceed to trimGalore
+		#Step 1c: use trimGalore to trim adaptors
+		echo "Running tringalore for $this_fname"
+		trim_galore --cores 6 -o $file_dir $f
 	fi
-
-
-	#else proceed to trimGalore
-
-	#Step 1c: use trimGalore to trim adaptors
-
 done
 
 exit 1
