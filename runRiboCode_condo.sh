@@ -158,8 +158,8 @@ for f in "${file_list[@]}"; do
         echo $this_fname
 	
 	#step 4a run metaplots
-	echo "metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname" -f0_percent 0.65"
-	metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname" -f0_percent 0.65
+	echo "metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname" -f0_percent 0.55"
+	metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname" -f0_percent 0.55
 
 	#output of metaplots is config file used in next step. Output name is "$this_fname"_pre_config.txt
 
@@ -177,8 +177,9 @@ for f in "${file_list[@]}"; do
         fi
 
 	#cleanup
-	rm -f "$this_fname"_pass_1_norRNAAligned.toTranscriptome.out.bam
-	rm -f "$this_fname"_pass_1_norRNAAligned.sortedByCoord.out.bam
+	echo "rm -f "$this_fname"_pass_1_trimmed_norRNAAligned.toTranscriptome.out.bam"
+	rm -f "$this_fname"_pass_1_trimmed_norRNAAligned.toTranscriptome.out.bam
+	rm -f "$this_fname"_pass_1_trimmed_norRNAAligned.sortedByCoord.out.bam
 done
 
 
@@ -186,4 +187,3 @@ done
 
 
 #Step 5: Count the number of RPF reads aligned to ORFs and save in file
-
