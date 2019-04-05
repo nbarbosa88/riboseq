@@ -10,7 +10,10 @@
 # Indexes: STAR index, bowtie2 rRNA index
 
 module load sra-toolkit/2.8.2
-module load cutadapt/intel/1.16
+#module load cutadapt/intel/1.16
+module unload python/2.7.13
+module load intel/18.0.2
+module load python/3.6.1
 module load bowtie2/intel/2.3.2
 module load star/2.6.1a
 
@@ -73,16 +76,17 @@ for f in "${file_list[@]}"; do
 		#Step 1c: use trimGalore to trim adaptors
 		echo "Running tringalore for $this_fname"
 		trim_galore --cores 6 -o $file_dir $f
+		rm -f $f
 	fi
 done
 
-exit 1
+#exit 1i
 
 
 #Step 2: Remove rRNA reads from FASTQ using bowtie or Sortmerna
 echo "Filtering rRNA using bowtie2"
 
-file_list=($file_dir/*pass_1.fastq)
+file_list=($file_dir/*pass_1_trimmed.fq)
 
 #run for all fastq files
 for f in "${file_list[@]}"; do
@@ -91,7 +95,6 @@ for f in "${file_list[@]}"; do
 	
 	echo "bowtie2 -p $proc --norc --un "$file_dir/$this_fname"_norRNA.fastq -q $f -x $rRNAIndex -S "$file_dir/$this_fname"_bt2Out.SAM"
 	bowtie2 -p $proc --norc --un "$file_dir/$this_fname"_norRNA.fastq -q $f -x $rRNAIndex -S "$file_dir/$this_fname"_bt2Out.SAM
-
 
 	if [ $? -ne 0 ]; then
                 fail_flag=true
@@ -151,7 +154,7 @@ for f in "${file_list[@]}"; do
 	
 	#step 4a run metaplots
 	echo "metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname""
-	metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname"
+	metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname" -f1_percent 0.65
 
 	#output of metaplots is config file used in next step. Output name is "$this_fname"_pre_config.txt
 
