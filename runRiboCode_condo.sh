@@ -9,19 +9,16 @@
 # Files: Humangenome.fa corresponding HumanAnnotation.gtf SRR files, rRNA seq database
 # Indexes: STAR index, bowtie2 rRNA index
 
-module load sra-toolkit/2.8.2
-#module load cutadapt/intel/1.16
-module unload python/2.7.13
-module load intel/18.0.2
-module load python/3.6.1
-module load bowtie2/intel/2.3.2
-module load star/2.6.1a
+module load bowtie2/2.3.1-py3-ge4lv4s
+module load star/2.5.3a-rdzqclb
+module load python/3.6.3-u4oaxsb
+module load py-pip/9.0.1-py3-dpds55c
 
 #copy needed files to scratch for faster access
-rRNAIndex=/N/dc2/scratch/ursingh/urmi/condo/sampleData/humanData/bowtieIndex/rRNAindex
-STARindex=/N/dc2/scratch/ursingh/urmi/condo/sampleData/humanData/human_STARindex
-RiboCodeAnnot=/N/dc2/scratch/ursingh/urmi/condo/sampleData/humanData/RiboCode_annot
-proc=8
+rRNAIndex=/work/LAS/mash-lab/usingh/riboSeq/sampleData/humanData/bowtieIndex/rRNAindex
+STARindex=/work/LAS/mash-lab/usingh/riboSeq/sampleData/humanData/human_STARindex
+RiboCodeAnnot=/work/LAS/mash-lab/usingh/riboSeq/sampleData/humanData/RiboCode_annot
+proc=16
 
 
 #Step 1: Convert .SRA files to FASTQ. Use fastq-dump to control quality
@@ -51,42 +48,12 @@ done
 echo "finally waiting for fastq-dump to finish..."
 wait
 
-
-#Step 1b: analyse lengths of the reads. Remove fastq with reads more than 40 bp
-#quickly estimate the distribution by looking at first 10,000,000 reads
-
-file_list=($file_dir/*pass_1.fastq)
-#max read length
-maxLen=50
-for f in "${file_list[@]}"; do
-	this_fname=$(echo "$f" | rev | cut -d"/" -f1 | rev | cut -d"." -f1)
-        echo $this_fname 
-	echo "head -10000000 $f | awk '{if(NR%4==2) print length($1)}' | sort | uniq -c"
-	lenDist=$(head -10000000 $f | awk '{if(NR%4==2) print length($1)}' | sort | uniq -c)
-	#echo "Dist: $lenDist"
-	mode=$(echo ${lenDist[0]} | awk '{print $2}')
-	#echo "MODE: $mode"
-	#if mode is > 40 reject the run
-	if [ "$mode" -gt "$maxLen" ]; then
-		rm -rf $f
-		echo "FAILED READ LENGTH TEST FOR " "$this_fname"
-                echo "$this_fname" >> "$file_dir"/failed_lengths.log
-	else 
-		#else proceed to trimGalore
-		#Step 1c: use trimGalore to trim adaptors
-		echo "Running tringalore for $this_fname"
-		trim_galore --cores 6 -o $file_dir $f
-		rm -f $f
-	fi
-done
-
-#exit 1i
-
+########Check if files are RPF not RNA seq############
 
 #Step 2: Remove rRNA reads from FASTQ using bowtie or Sortmerna
 echo "Filtering rRNA using bowtie2"
 
-file_list=($file_dir/*pass_1_trimmed.fq)
+file_list=($file_dir/*pass_1.fastq)
 
 #run for all fastq files
 for f in "${file_list[@]}"; do
@@ -95,6 +62,7 @@ for f in "${file_list[@]}"; do
 	
 	echo "bowtie2 -p $proc --norc --un "$file_dir/$this_fname"_norRNA.fastq -q $f -x $rRNAIndex -S "$file_dir/$this_fname"_bt2Out.SAM"
 	bowtie2 -p $proc --norc --un "$file_dir/$this_fname"_norRNA.fastq -q $f -x $rRNAIndex -S "$file_dir/$this_fname"_bt2Out.SAM
+
 
 	if [ $? -ne 0 ]; then
                 fail_flag=true
@@ -143,23 +111,18 @@ done
 
 #Step 4: Run RiboCode to identify translated ORFs and save results for each SRR file
 
-#switch to python 2
-module unload python/3.6.1
-module load intel/18.0.2
-module load python/2.7.13
-
 echo "Running RiboCode"
 file_list=($file_dir/*toTranscriptome.out.bam)
 
 for f in "${file_list[@]}"; do
-        #this_fname=$(echo "$f" | rev | cut -d"/" -f1 | rev | cut -d"." -f1)
 	echo $f
+        #this_fname=$(echo "$f" | rev | cut -d"/" -f1 | rev | cut -d"." -f1)
 	this_fname=$(echo "$f" | tr "_" "\t" | awk '{print $1}')
         echo $this_fname
 	
 	#step 4a run metaplots
-	echo "metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname" -f0_percent 0.55"
-	metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname" -f0_percent 0.55
+	echo "metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname""
+	metaplots -a $RiboCodeAnnot -r "$f" -o "$this_fname"
 
 	#output of metaplots is config file used in next step. Output name is "$this_fname"_pre_config.txt
 
@@ -177,9 +140,8 @@ for f in "${file_list[@]}"; do
         fi
 
 	#cleanup
-	echo "rm -f "$this_fname"_pass_1_trimmed_norRNAAligned.toTranscriptome.out.bam"
-	rm -f "$this_fname"_pass_1_trimmed_norRNAAligned.toTranscriptome.out.bam
-	rm -f "$this_fname"_pass_1_trimmed_norRNAAligned.sortedByCoord.out.bam
+	rm -f "$this_fname"_pass_1_norRNAAligned.toTranscriptome.out.bam
+	rm -f "$this_fname"_pass_1_norRNAAligned.sortedByCoord.out.bam
 done
 
 
