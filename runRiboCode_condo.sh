@@ -48,6 +48,22 @@ done
 echo "finally waiting for fastq-dump to finish..."
 wait
 
+#######################SEE THIS#####################################
+#integrate following to run trimgalore.
+#go through the file list and trim adaptor sequences
+for f in "${file_list[@]}"; do
+	     this_fname=$(echo "$f" | rev | cut -d"/" -f1 | rev | cut -d"." -f1)	
+             echo "Running trimgalore for $this_fname"
+             #use 6 cores and output it to the directory then delete the untrimmed ones
+	     echo "trim_galore --cores 6 -o $file_dir --paired "$file_dir/$this_fname"_pass_1.fastq "$file_dir/$this_fname"_pass_2.fastq"
+	     trim_galore --cores 10 -o $file_dir --paired "$file_dir/$this_fname"_pass_1.fastq "$file_dir/$this_fname"_pass_2.fastq
+	     #remove fastq files
+             #rm -f "$file_dir/$this_fname"_pass_1.fastq "$file_dir/$this_fname"_pass_2.fastq
+done
+
+#out of trim galore are files SRR2050915_pass_1_val_1.fq SRR2050915_pass_2_val_2.fq
+
+
 ########Check if files are RPF not RNA seq############
 
 #Step 2: Remove rRNA reads from FASTQ using bowtie or Sortmerna
@@ -75,7 +91,6 @@ for f in "${file_list[@]}"; do
 	rm -f "$f"
 	rm -f "$file_dir/$this_fname"_bt2Out.SAM									
 done
-
 
 
 #output of above step is files with no alignment to rRNA ending with name _norRNA.fastq
